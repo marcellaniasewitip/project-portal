@@ -1,0 +1,24 @@
+// tsconfig.node.json
+{
+  "compilerOptions": {
+    "composite": true, // Often used in solution-style tsconfigs for build outputs
+    "target": "ES2022", // Or adjust as needed for Node.js environment
+    "lib": ["ESNext"], // As fixed in our previous discussion
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler", // Or "node" for pure Node.js projects
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "strict": true, // Recommended for build tools too
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"] // Specify files relevant to this config
+}
