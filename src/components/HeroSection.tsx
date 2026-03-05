@@ -51,7 +51,7 @@ const HeroSection = () => {
       {/* 1. Hero Banner Section */}
       <div
         className="relative min-h-[85vh] flex items-center justify-center bg-cover bg-fixed bg-center"
-        style={{ backgroundImage: `url('src/assets/cover-page.jpg')` }}
+        style={{ backgroundImage: `url('assets/cover-page.jpg')` }}
       >
         <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"></div>
 
