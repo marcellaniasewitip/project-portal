@@ -28,7 +28,7 @@ const Footer = () => {
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center space-x-3">
               <img 
-                src="/src/assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png" 
+                src="src/assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png" 
                 alt="PNG Project Tracker" 
                 className="h-10 w-10" 
               />

@@ -84,7 +84,7 @@ const LoginPage = ({ setIsOpen }: LoginModalProps) => {
            but we keep the visual/logo structure: */}
         <div className="flex flex-col items-center">
           <img
-            src="assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png"
+            src="src/assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png"
             alt="PNG Emblem"
             className="h-16 w-16 mx-auto mb-3" // Slightly smaller icon for modal
           />
