@@ -33,7 +33,7 @@ const Navigation = ({ setIsLoginModalOpen }: NavigationProps) => {
           {/* Logo and Title Group */}
           <div className="flex items-center space-x-2">
             <img 
-              src="/src/assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png" 
+              src="assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png" 
               alt="PNG Project Tracker" 
               className="h-10 w-10 filter brightness-110" 
             />
