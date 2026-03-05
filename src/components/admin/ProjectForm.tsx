@@ -8,17 +8,18 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Calendar, CalendarDays, DollarSign, MapPin, Users, FileText } from 'lucide-react';
+import { DollarSign, MapPin, Users, FileText, ChevronDown, Loader2 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 
+// --- Zod Schema ---
 const projectSchema = z.object({
   title: z.string().min(2, 'Project title must be at least 2 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
-  location: z.string().min(2, 'Location is required'),
+  location: z.string().min(2, 'Specific location is required'),
   llg: z.string().min(1, 'LLG is required'),
   district: z.string().min(1, 'District is required'),
   contractor: z.string().min(2, 'Contractor name is required'),
-  budget: z.string().min(1, 'Budget is required'),
+  budget: z.string().regex(/^\d+$/, 'Budget must be a whole number'), 
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().min(1, 'End date is required'),
   status: z.string().min(1, 'Status is required'),
@@ -28,11 +29,12 @@ const projectSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectSchema>;
 
-const llg = [
-  'Nuku', 'West Palai', 'East Palai', 'Maimai Wanwan', 'Yangkok'
+// --- Constants ---
+const LLG_OPTIONS = [
+  'Nuku Central LLG', 'West Palai LLG', 'East Palai LLG', 'Maimai Wanwan LLG', 'Yangkok LLG'
 ];
 
-const district = [ 'Nuku'];
+const DISTRICT_OPTIONS = ['Nuku'];
 
 export const ProjectForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,35 +47,43 @@ export const ProjectForm = () => {
       description: '',
       location: '',
       llg: '',
-      district: '',
+      district: 'Nuku',
       contractor: '',
       budget: '',
       startDate: '',
       endDate: '',
-      status: '',
+      status: 'planning',
       category: '',
-      priority: '',
+      priority: 'medium',
     },
   });
 
   const onSubmit = async (data: ProjectFormData) => {
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Project Data:', data);
-      
-      toast({
-        title: "Project Created Successfully",
-        description: `${data.title} has been added to the system.`,
+      // THE FIX: Added credentials: 'include' to ensure the PHP session is recognized
+      const response = await fetch('http://localhost/project-tracking-portal/api/projects/create_project.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include', 
       });
-      
-      form.reset();
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: "Success!",
+          description: `"${data.title}" has been successfully registered.`,
+        });
+        form.reset({ district: 'Nuku', status: 'planning', priority: 'medium' });
+      } else {
+        throw new Error(result.message || "Failed to save project.");
+      }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create project. Please try again.",
+        description: error instanceof Error ? error.message : "Connection to server failed.",
         variant: "destructive",
       });
     } finally {
@@ -82,27 +92,32 @@ export const ProjectForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-0 md:px-4 py-4">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-slate-900">Create New Project</h2>
+        <p className="text-slate-500">Fill in the details below to register a new infrastructure project.</p>
+      </div>
+
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Basic Information
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          
+          {/* Section 1: Basic Information */}
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="bg-slate-50/50 border-b">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold text-primary">
+                <FileText className="h-5 w-5 text-blue-600" />
+                Project Details
               </CardTitle>
-              <CardDescription>Project details and description</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6 pt-6">
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project Title</FormLabel>
+                    <FormLabel className="font-semibold">Project Title</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., New Road Construction Project" {...field} />
+                      <Input placeholder="e.g., Rural Road Rehabilitation" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -114,11 +129,11 @@ export const ProjectForm = () => {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project Description</FormLabel>
+                    <FormLabel className="font-semibold">Project Description</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Detailed description of the project objectives, scope, and expected outcomes..."
-                        className="min-h-[100px]"
+                        placeholder="Detailed scope and objectives..."
+                        className="min-h-[100px] resize-none"
                         {...field}
                       />
                     </FormControl>
@@ -127,14 +142,14 @@ export const ProjectForm = () => {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Project Category</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel className="font-semibold">Category</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select category" />
@@ -145,9 +160,6 @@ export const ProjectForm = () => {
                           <SelectItem value="education">Education</SelectItem>
                           <SelectItem value="healthcare">Healthcare</SelectItem>
                           <SelectItem value="water-sanitation">Water & Sanitation</SelectItem>
-                          <SelectItem value="agriculture">Agriculture</SelectItem>
-                          <SelectItem value="energy">Energy</SelectItem>
-                          <SelectItem value="transportation">Transportation</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -160,17 +172,17 @@ export const ProjectForm = () => {
                   name="priority"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Priority Level</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel className="font-semibold">Priority Level</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select priority" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="high">High Priority</SelectItem>
+                          <SelectItem value="medium">Medium Priority</SelectItem>
+                          <SelectItem value="low">Low Priority</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -181,48 +193,45 @@ export const ProjectForm = () => {
             </CardContent>
           </Card>
 
-          {/* Location Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Location Details
+          {/* Section 2: Location Information */}
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="bg-slate-50/50 border-b">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold text-primary">
+                <MapPin className="h-5 w-5 text-red-600" />
+                Execution Site
               </CardTitle>
-              <CardDescription>Geographic information for the project</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6 pt-6">
               <FormField
                 control={form.control}
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Specific Location</FormLabel>
+                    <FormLabel className="font-semibold">Specific Site / Village</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Village name, coordinates, or detailed address" {...field} />
+                      <Input placeholder="e.g., Sapik Village" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="llg"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>LLG</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel className="font-semibold">Local Level Government (LLG)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select LLG" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {llg.map((llg) => (
-                            <SelectItem key={llg} value={llg}>
-                              {llg}
-                            </SelectItem>
+                          {LLG_OPTIONS.map((opt) => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -236,19 +245,15 @@ export const ProjectForm = () => {
                   name="district"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>District</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel className="font-semibold">District</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select district" />
+                            <SelectValue placeholder="Nuku" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {district.map((district) => (
-                            <SelectItem key={district} value={district}>
-                              {district}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="Nuku">Nuku</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -259,89 +264,55 @@ export const ProjectForm = () => {
             </CardContent>
           </Card>
 
-          {/* Project Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Project Management
+          {/* Section 3: Finance & Contractor */}
+          <Card className="shadow-sm border-slate-200">
+            <CardHeader className="bg-slate-50/50 border-b">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold text-primary">
+                <DollarSign className="h-5 w-5 text-green-600" />
+                Finance & Timeline
               </CardTitle>
-              <CardDescription>Contractor and execution details</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="contractor"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contractor</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Company or organization name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="contractor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-semibold">Contractor Name</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
+                        <Input placeholder="Executing company" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="planning">Planning</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
-                        <SelectItem value="on-hold">On Hold</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="delayed">Delayed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          {/* Financial & Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Budget & Timeline
-              </CardTitle>
-              <CardDescription>Financial allocation and project schedule</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="budget"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Total Budget (PGK)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., 1,500,000" {...field} />
-                    </FormControl>
-                    <FormDescription>Enter the total allocated budget in Papua New Guinea Kina</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="budget"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-semibold">Total Budget (PGK)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-slate-400 font-bold">K</span>
+                          <Input type="number" className="pl-8" placeholder="0.00" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="startDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Date</FormLabel>
+                      <FormLabel className="font-semibold">Proposed Start Date</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -355,7 +326,7 @@ export const ProjectForm = () => {
                   name="endDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Expected End Date</FormLabel>
+                      <FormLabel className="font-semibold">Target Completion</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
@@ -367,18 +338,25 @@ export const ProjectForm = () => {
             </CardContent>
           </Card>
 
-          {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pb-10">
             <Button
               type="button"
               variant="outline"
               onClick={() => form.reset()}
               disabled={isSubmitting}
+              className="w-full sm:w-32"
             >
               Clear Form
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
-              {isSubmitting ? 'Creating...' : 'Create Project'}
+            <Button type="submit" disabled={isSubmitting} className="w-full sm:w-48 bg-blue-700 hover:bg-blue-800">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Register Project'
+              )}
             </Button>
           </div>
         </form>

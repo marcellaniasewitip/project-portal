@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Progress } from '../ui/progress';
-import { Edit, Eye, Trash2, MapPin, Calendar, DollarSign } from 'lucide-react';
+import { Edit, Eye, Trash2, MapPin, Calendar, DollarSign, Loader2 } from 'lucide-react';
+import { EditProjectModal } from './EditProjectModal'; // <--- Import the new modal
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -17,216 +18,124 @@ import {
 } from '../ui/alert-dialog';
 import { useToast } from '../../hooks/use-toast';
 
+// Updated Interface to match your DB columns exactly
 interface Project {
   id: string;
   title: string;
   description: string;
-  location: string;
-  llg: string;
-  district: string;
+  location_general: string; // Matches DB
+  location_llg: string;     // Matches DB
+  location_district: string;
   contractor: string;
   budget: string;
-  budgetUsed: string;
-  startDate: string;
-  endDate: string;
+  amount_used: string;       // Changed from budgetUsed
+  start_date: string;       // Matches DB
+  end_date: string;         // Matches DB
   status: 'planning' | 'in-progress' | 'on-hold' | 'completed' | 'delayed';
   category: string;
   priority: 'high' | 'medium' | 'low';
-  progress: number;
+  progress_percentage: number; // Changed from progress
 }
 
-interface ProjectListProps {
-  preview?: boolean;
-}
-
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    title: 'Rural Road Rehabilitation Project',
-    description: 'Upgrading 25km of rural access roads to improve connectivity for remote communities.',
-    location: 'Piom to Ningil',
-    llg: 'Yangkok',
-    district: 'Nuku',
-    contractor: 'Dekenai Infrastructure Ltd',
-    budget: '250,000',
-    budgetUsed: '175,000',
-    startDate: '2024-01-15',
-    endDate: '2025-08-30',
-    status: 'in-progress',
-    category: 'infrastructure',
-    priority: 'high',
-    progress: 40
-  },
-  {
-    id: '2',
-    title: 'Rural Health Center Construction',
-    description: 'Construction of a new health center to serve remote communities.',
-    location: 'Wasisi Village',
-    llg: 'West Palai LLG',
-    district: 'Nuku',
-    contractor: 'Wasisi Construction Co',
-    budget: '28,000',
-    budgetUsed: '14,000',
-    startDate: '2025-05-01',
-    endDate: '2024-10-15',
-    status: 'in-progress',
-    category: 'healthcare',
-    priority: 'high',
-    progress: 75
-  },
-  {
-    id: '3',
-    title: 'School Classroom Expansion',
-    description: 'Addition of 6 new classrooms and library facilities for Lae Primary School.',
-    location: 'Sapik',
-    llg: 'West Palai LLG',
-    district: 'Nuku',
-    contractor: 'Urban Torowi Builders',
-    budget: '95,000',
-    budgetUsed: '95,000',
-    startDate: '2025-01-01',
-    endDate: '2025-07-01',
-    status: 'completed',
-    category: 'energy',
-    priority: 'medium',
-    progress: 100
-  },
-  {
-    id: '4',
-    title: 'Water Supply System Upgrade',
-    description: 'Upgrading water supply infrastructure for improved access to clean water.',
-    location: 'Wara Sikau',
-    llg: 'East Palai LLG',
-    district: 'Madang',
-    contractor: 'Pacific Water Solutions',
-    budget: '3,200000',
-    budgetUsed: '64,000',
-    startDate: '2025-05-01',
-    endDate: '2025-06-30',
-    status: 'in-progress',
-    category: 'water-sanitation',
-    priority: 'high',
-    progress: 25
-  },
-  {
-    id: '5',
-    title: 'Bridge Construction Project',
-    description: 'Construction of a new bridge to connect isolated Wati and Nuku Station during flood season.',
-    location: 'Wara Moon',
-    llg: 'Nuku Central LLG',
-    district: 'Nuku',
-    contractor: 'Coastal Engineering Ltd',
-    budget: '450,000',
-    budgetUsed: '0',
-    startDate: '2024-09-01',
-    endDate: '2025-08-31',
-    status: 'in-progress',
-    category: 'road',
-    priority: 'medium',
-    progress: 10
-  }
-];
-
-const getStatusColor = (status: Project['status']) => {
-  switch (status) {
-    case 'completed':
-      return 'bg-green-500';
-    case 'in-progress':
-      return 'bg-blue-500';
-    case 'on-hold':
-      return 'bg-orange-500';
-    case 'delayed':
-      return 'bg-red-500';
-    case 'planning':
-      return 'bg-gray-500';
-    default:
-      return 'bg-gray-400';
-  }
-};
-
-const getPriorityColor = (priority: Project['priority']) => {
-  switch (priority) {
-    case 'high':
-      return 'destructive';
-    case 'medium':
-      return 'secondary';
-    case 'low':
-      return 'outline';
-    default:
-      return 'outline';
-  }
-};
-
-export const ProjectList = ({ preview = false }: ProjectListProps) => {
-  const [projects] = useState<Project[]>(mockProjects);
+export const ProjectList = ({ preview = false }: { preview?: boolean }) => {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingProject, setEditingProject] = useState<Project | null>(null); // State for modal
   const { toast } = useToast();
 
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('http://localhost/project-tracking-portal/api/projects/projects.php');
+      const json = await response.json();
+      if (json.success) {
+        setProjects(json.data);
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Connection Error", description: "Could not load projects." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchProjects(); }, []);
+
+  const handleDelete = async (projectId: string) => {
+    try {
+      const res = await fetch(`http://localhost/project-tracking-portal/api/projects/delete_project.php?id=${projectId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const json = await res.json();
+      if (json.success) {
+        setProjects(projects.filter(p => p.id !== projectId));
+        toast({ title: "Success", description: "Project removed from database." });
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete project." });
+    }
+  };
+
+  // UI Helpers
+  const getStatusColor = (s: Project['status']) => {
+    const colors = { completed: 'bg-green-500', 'in-progress': 'bg-blue-500', 'on-hold': 'bg-orange-500', delayed: 'bg-red-500', planning: 'bg-gray-500' };
+    return colors[s] || 'bg-gray-400';
+  };
+
+  const formatCurrency = (amt: string) => `K${parseFloat(amt || "0").toLocaleString()}`;
+  const formatDate = (ds: string) => ds ? new Date(ds).toLocaleDateString('en-PG', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+
+  if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
+
   const displayProjects = preview ? projects.slice(0, 3) : projects;
-
-  const handleDelete = (projectId: string) => {
-    toast({
-      title: "Project Deleted",
-      description: "The project has been removed from the system.",
-    });
-  };
-
-  const formatCurrency = (amount: string) => {
-    return `K${parseInt(amount).toLocaleString()}`;
-  };
-
-  const calculateBudgetPercentage = (used: string, total: string) => {
-    return Math.round((parseInt(used) / parseInt(total)) * 100);
-  };
 
   return (
     <div className="space-y-4">
       {displayProjects.map((project) => (
-        <Card key={project.id} className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <CardTitle className="text-lg mb-2">{project.title}</CardTitle>
-                <CardDescription className="mb-3">{project.description}</CardDescription>
+        <Card key={project.id} className="hover:shadow-md transition-all border-l-4 border-primary/20">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start">
+              <div className="flex-1 min-w-0 pr-4">
+                <CardTitle className="text-xl font-bold">{project.title}</CardTitle>
+                <CardDescription className="line-clamp-2 mt-1">{project.description}</CardDescription>
                 
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge variant={getPriorityColor(project.priority)}>
-                    {project.priority.charAt(0).toUpperCase() + project.priority.slice(1)} Priority
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <Badge variant={project.priority === 'high' ? 'destructive' : 'secondary'}>
+                    {project.priority.toUpperCase()}
                   </Badge>
-                  <Badge variant="secondary">{project.category}</Badge>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${getStatusColor(project.status)}`} />
-                    <span className="text-xs text-muted-foreground capitalize">{project.status.replace('-', ' ')}</span>
+                  <Badge variant="outline">{project.category}</Badge>
+                  <div className="flex items-center gap-1.5 ml-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${getStatusColor(project.status)}`} />
+                    <span className="text-xs font-medium uppercase text-muted-foreground">{project.status.replace('-', ' ')}</span>
                   </div>
                 </div>
               </div>
               
               {!preview && (
-                <div className="flex gap-2 ml-4">
-                  <Button size="sm" variant="outline">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button size="sm" variant="outline">
+                <div className="flex gap-2 mt-4 sm:mt-0">
+                  <Button size="icon" variant="outline" className="h-8 w-8"><Eye className="h-4 w-4" /></Button>
+                  
+                  {/* EDIT BUTTON TRIGGERS MODAL */}
+                  <Button 
+                    size="icon" 
+                    variant="outline" 
+                    className="h-8 w-8"
+                    onClick={() => setEditingProject(project)}
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Button size="icon" variant="destructive" className="h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the project
-                          "{project.title}" and remove all associated data.
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+                        <AlertDialogDescription>Removing "{project.title}" is permanent.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(project.id)}>
-                          Delete
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleDelete(project.id)}>Delete</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
@@ -234,64 +143,64 @@ export const ProjectList = ({ preview = false }: ProjectListProps) => {
               )}
             </div>
           </CardHeader>
-          
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>{project.location}, {project.llg}</span>
+
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" /> {project.location_general}, {project.location_llg}
               </div>
-              
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}</span>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" /> {formatDate(project.start_date)}
               </div>
-              
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <DollarSign className="h-4 w-4" />
-                <span>Budget: {formatCurrency(project.budget)}</span>
+              <div className="flex items-center gap-2 font-semibold text-foreground">
+                <DollarSign className="h-4 w-4" /> {formatCurrency(project.budget)}
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <div className="flex justify-between items-center text-sm mb-1">
-                  <span>Project Progress</span>
-                  <span>{project.progress}%</span>
+                <div className="flex justify-between text-xs mb-1.5 uppercase font-bold tracking-wider">
+                  <span>Physical Progress</span>
+                  <span className="text-primary">{project.progress_percentage}%</span>
                 </div>
-                <Progress value={project.progress} className="h-2" />
+                <Progress value={Number(project.progress_percentage)} className="h-2" />
               </div>
 
               <div>
-                <div className="flex justify-between items-center text-sm mb-1">
-                  <span>Budget Utilization</span>
-                  <span>{calculateBudgetPercentage(project.budgetUsed, project.budget)}%</span>
+                <div className="flex justify-between text-xs mb-1.5 uppercase font-bold tracking-wider">
+                  <span>Funds Utilized</span>
+                  <span>
+                    {project.budget && parseInt(project.budget) > 0 
+                      ? Math.round((parseFloat(project.amount_used) / parseFloat(project.budget)) * 100) 
+                      : 0}%
+                  </span>
                 </div>
                 <Progress 
-                  value={calculateBudgetPercentage(project.budgetUsed, project.budget)} 
+                  value={(parseFloat(project.amount_used) / parseFloat(project.budget)) * 100} 
                   className="h-2" 
                 />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>Used: {formatCurrency(project.budgetUsed)}</span>
+                <div className="flex justify-between text-[10px] mt-1 text-muted-foreground">
+                  <span>Spent: {formatCurrency(project.amount_used)}</span>
                   <span>Total: {formatCurrency(project.budget)}</span>
                 </div>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
-                <span>Contractor: {project.contractor}</span>
-                <span>District: {project.district}</span>
               </div>
             </div>
           </CardContent>
         </Card>
       ))}
       
+      {/* EDIT MODAL COMPONENT */}
+      {editingProject && (
+        <EditProjectModal 
+          project={editingProject} 
+          isOpen={!!editingProject} 
+          onClose={() => setEditingProject(null)} 
+          onRefresh={fetchProjects}
+        />
+      )}
+
       {preview && projects.length > 3 && (
-        <div className="text-center">
-          <Button variant="outline">View All Projects ({projects.length})</Button>
-        </div>
+        <Button variant="outline" className="w-full">View All {projects.length} Projects</Button>
       )}
     </div>
   );

@@ -5,7 +5,7 @@
 define('DB_SERVER', 'localhost'); // Your database host (e.g., 'localhost' or '127.0.0.1')
 define('DB_USERNAME', 'root');   // Your database username
 define('DB_PASSWORD', '');       // Your database password
-define('DB_NAME', 'project-tracking-portal'); // The name of your database
+define('DB_NAME', 'nuku_db'); // The name of your database
 
 // Attempt to connect to MySQL database
 $conn = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);

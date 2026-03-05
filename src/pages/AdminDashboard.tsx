@@ -1,204 +1,191 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ProjectForm } from '../components/admin/ProjectForm';
 import { ProjectList } from '../components/admin/ProjectList';
 import { Analytics } from '../components/admin/Analytics';
 import { Button } from '../components/ui/button';
-import { Plus, BarChart3, FileText, Users, UserCircle, LogOut, User } from 'lucide-react'; // Import new icons
-
-// Import DropdownMenu components
+import { useNavigate } from 'react-router-dom';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "../components/ui/sheet";
+import { 
+  Plus, BarChart3, FileText, Users, UserCircle, LogOut, 
+  LayoutDashboard, ListPlus, CircleDollarSign, Loader2, Menu 
+} from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate for redirection
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const navigate = useNavigate(); // Initialize navigate hook
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
-  // Mock user data (in a real app, this would come from context/auth state)
-  const [username] = useState('AdminUser'); // Example: Replace with actual logged-in username
+  const [userEmail, setUserEmail] = useState(''); 
+  const [displayName, setDisplayName] = useState('');
+  const [dbStats, setDbStats] = useState({ total_projects: 0, total_budget: 0, total_feedback: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const stats = [
-    {
-      title: 'Total Projects',
-      value: '24',
-      description: 'Active development projects',
-      icon: FileText,
-      trend: '+12%'
-    },
-    {
-      title: 'Total Budget',
-      value: 'K10M',
-      description: 'Allocated funds this year',
-      icon: BarChart3,
-      trend: '+8%'
-    },
-    {
-      title: 'Public Feedback',
-      value: '156',
-      description: 'Community submissions',
-      icon: Users,
-      trend: '+23%'
-    }
+  useEffect(() => {
+    const initDashboard = async () => {
+      try {
+        setLoading(true);
+        // GET USER (with credentials include to pass session cookie)
+        const userRes = await fetch('http://localhost/project-tracking-portal/api/get_current_user.php', { credentials: 'include' });
+        const userData = await userRes.json();
+        
+        if (userData.success) {
+          setUserEmail(userData.email);
+          setDisplayName(userData.display_name);
+        } else {
+          navigate('/'); // Redirect if session missing
+          return;
+        }
+
+        // GET STATS
+        const statsRes = await fetch('http://localhost/project-tracking-portal/api/dashboard/get_dashboard_stats.php', { credentials: 'include' });
+        const statsData = await statsRes.json();
+        if (statsData.success) setDbStats(statsData.stats);
+
+      } catch (err) {
+        console.error("Sync Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initDashboard();
+  }, [navigate]);
+
+  const navItems = [
+    { value: 'overview', name: 'Dashboard', icon: LayoutDashboard },
+    { value: 'projects', name: 'Projects', icon: FileText },
+    { value: 'feedback', name: 'Community Voice', icon: Users },
+    { value: 'add-project', name: 'Add New', icon: ListPlus },
+    { value: 'analytics', name: 'Analytics', icon: BarChart3 },
   ];
 
-  const handleLogout = () => {
-    // Clear authentication state (e.g., remove item from localStorage)
+  const handleLogout = async () => {
+    await fetch('http://localhost/project-tracking-portal/api/auth/logout.php', { credentials: 'include' });
     localStorage.removeItem('isAuthenticated');
-    // Redirect to the login page
-    navigate('/'); // Assuming '/admin' is your login page route
+    navigate('/');
   };
 
-  const handleProfileClick = () => {
-    // Implement your profile navigation or modal here
-    // For now, let's just log it or show a toast
-    console.log("Profile clicked!");
-    // Example: navigate('/admin-profile');
-  };
-
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-primary/5">
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-8 flex justify-between items-center"> {/* Added flex and justify-between */}
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Manage PNG district and provincial projects</p>
-          </div>
-
-          {/* User Profile Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
-                <UserCircle className="h-6 w-6 text-primary" />
-                <span className="sr-only">User menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{username}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    admin@example.com {/* Example email, replace with actual user email */}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleProfileClick}>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <stat.icon className="h-5 w-5 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stat.description}
-                  <span className="text-green-600 ml-2">{stat.trend}</span>
-                </p>
-              </CardContent>
-            </Card>
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full py-4">
+      <div className="px-3 py-2 flex-1">
+        <h2 className="mb-6 px-4 text-xl font-bold text-primary tracking-tight">Nuku Portal</h2>
+        <div className="space-y-1">
+          {navItems.map((item) => (
+            <Button
+              key={item.value}
+              variant={activeTab === item.value ? "secondary" : "ghost"}
+              className="w-full justify-start gap-3"
+              onClick={() => { setActiveTab(item.value); setIsMobileMenuOpen(false); }}
+            >
+              <item.icon className="h-4 w-4" /> {item.name}
+            </Button>
           ))}
         </div>
+      </div>
+      <div className="px-3 mt-auto">
+        <div className="bg-white p-3 rounded-lg border shadow-sm mb-4">
+          <p className="text-xs font-bold truncate">{displayName || 'Loading...'}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{userEmail}</p>
+        </div>
+        <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-2" /> Sign Out
+        </Button>
+      </div>
+    </div>
+  );
 
-        {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
-            <TabsTrigger value="add-project">Add Project</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
+  return (
+    <div className="min-h-screen bg-slate-50">
+      
+      {/* MOBILE HEADER */}
+<header className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-white px-4 h-16 border-b">
+  <div className="flex items-center gap-2">
+    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <Menu />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="p-0 w-72">
+       <SheetContent side="left" className="p-0 w-72">
+  <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
+  {/* Optional Description */}
+  <div className="sr-only">Access dashboard, projects, and analytics.</div>
+  <SidebarContent />
+</SheetContent>
+      </SheetContent>
+    </Sheet>
+    <span className="font-bold text-primary">Nuku Admin</span>
+  </div>
+  <UserCircle className="text-primary h-8 w-8" />
+</header>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Projects</CardTitle>
-                  <CardDescription>Latest project updates</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ProjectList preview={true} />
-                </CardContent>
-              </Card>
+      <div className="flex">
+        {/* DESKTOP SIDEBAR */}
+        <aside className="hidden md:block w-64 border-r bg-slate-100 h-screen sticky top-0">
+          <SidebarContent />
+        </aside>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>Common administrative tasks</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button
-                    onClick={() => setActiveTab('add-project')}
-                    className="w-full justify-start"
-                    variant="outline"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add New Project
-                  </Button>
-                  <Button
-                    onClick={() => setActiveTab('analytics')}
-                    className="w-full justify-start"
-                    variant="outline"
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    View Analytics
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+        {/* MAIN CONTENT */}
+        <main className="flex-1 p-4 md:p-10 max-w-7xl mx-auto w-full">
+          <div className="mb-8 hidden md:block">
+            <h1 className="text-4xl font-black text-slate-900">Admin Dashboard</h1>
+            <p className="text-slate-500">Welcome back, {displayName}</p>
+          </div>
 
-          <TabsContent value="projects">
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Management</CardTitle>
-                <CardDescription>View and manage all projects</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProjectList />
-              </CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <Card className="border-l-4 border-blue-500">
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Projects</CardTitle></CardHeader>
+              <CardContent className="text-2xl font-bold">{loading ? "..." : dbStats.total_projects}</CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="add-project">
-            <Card>
-              <CardHeader>
-                <CardTitle>Add New Project</CardTitle>
-                <CardDescription>Create a new development project</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProjectForm />
-              </CardContent>
+            <Card className="border-l-4 border-green-500">
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Budget</CardTitle></CardHeader>
+              <CardContent className="text-2xl font-bold">K{(dbStats.total_budget / 1000000).toFixed(1)}M</CardContent>
             </Card>
-          </TabsContent>
+            <Card className="border-l-4 border-purple-500">
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Feedback</CardTitle></CardHeader>
+              <CardContent className="text-2xl font-bold">{dbStats.total_feedback}</CardContent>
+            </Card>
+          </div>
 
-          <TabsContent value="analytics">
-            <Analytics />
-          </TabsContent>
-        </Tabs>
+          {/*<div className="bg-white rounded-xl shadow-sm border p-4 md:p-6 min-h-[400px]">
+             {activeTab === 'overview' && (
+               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                 <h2 className="text-2xl font-bold">Live Overview</h2>
+                 <ProjectList preview={true} />
+               </div>
+             )}
+             {activeTab === 'projects' && <ProjectList />}
+             {activeTab === 'add-project' && <ProjectForm />}
+             {activeTab === 'analytics' && <Analytics />}
+          </div>*/}
+          <div className="bg-white rounded-xl shadow-sm border p-4 md:p-6 min-h-[400px]">
+   {activeTab === 'overview' && (
+     <div className="space-y-6">
+       <h2 className="text-2xl font-bold">Live Overview</h2>
+       <ProjectList preview={true} />
+     </div>
+   )}
+   {activeTab === 'projects' && <ProjectList />}
+   
+   {/* ADD THIS NEW SECTION */}
+   {activeTab === 'feedback' && (
+     <div className="space-y-6">
+       <h2 className="text-2xl font-bold">Recent Feedback Submissions</h2>
+       {/* You can reuse the PublicFeedback component here but in 'admin mode' */}
+       <p className="text-muted-foreground text-sm">Use the 'Projects' tab to view feedback specific to each project via the eye icon.</p>
+     </div>
+   )}
+
+   {activeTab === 'add-project' && <ProjectForm />}
+   {activeTab === 'analytics' && <Analytics />}
+</div>
+        </main>
       </div>
     </div>
   );
