@@ -5,16 +5,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",    
-    "build": "react-scripts build",
-    "build:dev": "vite build --mode development",
+    "dev": "vite",
+    "build": "vite build",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
+    "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "react-scripts start",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
     "push": "git add . && git commit -m \"update\" && git push origin main"
   },
   "dependencies": {
