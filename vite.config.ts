@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   // 🎯 FIX: Force relative paths starting with './'
-  base: './', 
+  base: '/project-portal', 
 
   server: {
     host: "::",

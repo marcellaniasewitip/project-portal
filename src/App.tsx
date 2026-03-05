@@ -33,7 +33,7 @@ const App = () => (
         is hosted in a subdirectory (your GitHub Pages repo name).
         ====================================================================
       */}
-      <BrowserRouter>
+      <BrowserRouter basename="/project-portal">
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Index />} />
