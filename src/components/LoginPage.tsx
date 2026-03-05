@@ -84,7 +84,7 @@ const LoginPage = ({ setIsOpen }: LoginModalProps) => {
            but we keep the visual/logo structure: */}
         <div className="flex flex-col items-center">
           <img
-            src="/src/assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png"
+            src="assets/738px-National_emblem_of_Papua_New_Guinea_(variant).svg.png"
             alt="PNG Emblem"
             className="h-16 w-16 mx-auto mb-3" // Slightly smaller icon for modal
           />
@@ -139,7 +139,7 @@ const LoginPage = ({ setIsOpen }: LoginModalProps) => {
       {/* FOOTER SECTION */}
       <div className="p-6 pt-0 border-t border-border">
         
-        <p className="text-center text-sm text-muted-foreground mt-4">
+       {/*} <p className="text-center text-sm text-muted-foreground mt-4">
           Don't have an account?{' '}
           <Button 
              variant="link" 
@@ -151,7 +151,7 @@ const LoginPage = ({ setIsOpen }: LoginModalProps) => {
           >
             Register here
           </Button>
-        </p>
+        </p>*/}
 
         {/* Copyright */}
         <p className="w-full text-center text-xs text-muted-foreground mt-4">
